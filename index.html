@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TypeMaster – Learn to Type Fast</title>
+<meta name="theme-color" content="#0a0f1e">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00d4aa;
+    --accent2: #7c6af7;
+    --accent3: #f59e0b;
+    --text: #e8f0fe;
+    --text-dim: #6b7a99;
+    --text-muted: #3d4f6e;
+    --correct: #00d4aa;
+    --wrong: #f87171;
+    --cursor: #f59e0b;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Sora', sans-serif;
+    --r: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG GRID */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* GLOW ORBS */
+  .orb {
+    position: fixed; border-radius: 50%;
+    filter: blur(80px); pointer-events: none; z-index: 0;
+  }
+  .orb1 { width: 400px; height: 400px; background: rgba(0,212,170,0.07); top: -100px; left: -100px; }
+  .orb2 { width: 300px; height: 300px; background: rgba(124,106,247,0.07); bottom: -50px; right: -50px; }
+
+  /* LAYOUT */
+  #app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* HEADER */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .badge {
+    font-family: var(--mono); font-size: 0.7rem;
+    padding: 4px 10px; border-radius: 20px;
+    background: rgba(0,212,170,0.1); color: var(--accent);
+    border: 1px solid rgba(0,212,170,0.2);
+  }
+
+  /* PROGRESS BAR */
+  .progress-wrap { margin-bottom: 36px; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px;
+    font-family: var(--mono);
+  }
+  .progress-track {
+    height: 6px; background: var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 10px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.5s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  /* LESSON GRID */
+  #lesson-screen { animation: fadeUp 0.4s ease; }
+  .screen-title {
+    font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.5px;
+  }
+  .screen-sub { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 28px; }
+
+  .lesson-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;
+  }
+  .lesson-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 18px 16px;
+    cursor: pointer; transition: all 0.25s ease;
+    position: relative; overflow: hidden;
+  }
+  .lesson-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(0,212,170,0.05), transparent);
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .lesson-card:hover { border-color: rgba(0,212,170,0.4); transform: translateY(-2px); }
+  .lesson-card:hover::before { opacity: 1; }
+  .lesson-card.completed { border-color: rgba(0,212,170,0.3); }
+  .lesson-card.completed .lesson-num { color: var(--accent); }
+  .lesson-card.locked { opacity: 0.4; cursor: not-allowed; }
+  .lesson-card.locked:hover { transform: none; border-color: var(--border); }
+  .lesson-num {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted);
+    margin-bottom: 8px; letter-spacing: 1px;
+  }
+  .lesson-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+  .lesson-desc { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; }
+  .lesson-status {
+    position: absolute; top: 14px; right: 14px;
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .lesson-status.done { background: rgba(0,212,170,0.15); color: var(--accent); }
+  .lesson-status.lock { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+  .lesson-stars { display: flex; gap: 3px; margin-top: 10px; }
+  .star { font-size: 12px; color: var(--text-muted); }
+  .star.lit { color: var(--accent3); }
+
+  /* PRACTICE SCREEN */
+  #practice-screen { display: none; animation: fadeUp 0.4s ease; }
+  .practice-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px;
+  }
+  .back-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 14px; border-radius: 8px;
+    cursor: pointer; font-family: var(--sans); font-size: 0.85rem;
+    transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  .back-btn:hover { border-color: rgba(0,212,170,0.4); color: var(--accent); }
+  .practice-info h2 { font-size: 1.3rem; font-weight: 700; }
+  .practice-info p { font-size: 0.8rem; color: var(--text-dim); font-family: var(--mono); }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex; gap: 14px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .stat-box {
+    flex: 1; min-width: 80px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+  }
+  .stat-val {
+    font-family: var(--mono); font-size: 1.5rem; font-weight: 700;
+    color: var(--accent); line-height: 1;
+  }
+  .stat-val.danger { color: var(--wrong); }
+  .stat-label { font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.5px; }
+
+  /* LESSON INSTRUCTIONS */
+  .lesson-instructions {
+    background: rgba(124,106,247,0.07); border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 10px; padding: 14px 18px;
+    font-size: 0.85rem; color: #a89ef5; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  .lesson-instructions strong { color: var(--accent2); }
+
+  /* TYPING AREA */
+  .typing-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 32px 28px;
+    margin-bottom: 18px;
+  }
+  .text-display {
+    font-family: var(--mono); font-size: 1.25rem;
+    line-height: 2; letter-spacing: 0.5px;
+    margin-bottom: 24px; user-select: none;
+    word-break: break-all;
+  }
+  .char { position: relative; }
+  .char.correct { color: var(--correct); }
+  .char.wrong {
+    color: var(--wrong);
+    background: rgba(248,113,113,0.15);
+    border-radius: 2px;
+  }
+  .char.current {
+    background: rgba(245,158,11,0.2);
+    border-radius: 2px;
+    animation: blink 1s infinite;
+  }
+  .char.pending { color: var(--text-muted); }
+
+  @keyframes blink {
+    0%, 100% { background: rgba(245,158,11,0.2); }
+    50% { background: rgba(245,158,11,0.05); }
+  }
+
+  .hidden-input {
+    position: absolute; opacity: 0; pointer-events: none;
+    width: 1px; height: 1px;
+  }
+  .input-prompt {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 10px; cursor: text; transition: border-color 0.2s;
+    font-family: var(--mono); font-size: 0.85rem; color: var(--text-dim);
+  }
+  .input-prompt.active { border-color: rgba(0,212,170,0.5); }
+  .input-prompt .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* KEYBOARD HINT */
+  .keyboard-hint {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 18px;
+    justify-content: center;
+  }
+  .key {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-bottom: 3px solid var(--text-muted);
+    border-radius: 6px; padding: 6px 10px;
+    font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim);
+    transition: all 0.1s;
+  }
+  .key.highlight {
+    background: rgba(0,212,170,0.15);
+    border-color: var(--accent);
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* RESULT SCREEN */
+  #result-screen {
+    display: none; text-align: center;
+    animation: fadeUp 0.5s ease;
+  }
+  .result-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 48px 36px;
+    max-width: 500px; margin: 0 auto;
+  }
+  .result-emoji { font-size: 4rem; margin-bottom: 16px; }
+  .result-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 6px; }
+  .result-sub { color: var(--text-dim); margin-bottom: 32px; }
+  .result-stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px; margin-bottom: 32px;
+  }
+  .result-stat {
+    background: var(--surface2); border-radius: 12px;
+    padding: 18px; border: 1px solid var(--border);
+  }
+  .result-stat .val {
+    font-family: var(--mono); font-size: 2rem; font-weight: 700;
+    color: var(--accent);
+  }
+  .result-stat .lbl { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+  .stars-display { font-size: 2rem; margin-bottom: 28px; letter-spacing: 4px; }
+  .btn {
+    padding: 14px 28px; border-radius: 10px;
+    font-family: var(--sans); font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #00b894);
+    color: #0a0f1e; margin-right: 10px;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,212,170,0.3); }
+  .btn-secondary {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: rgba(0,212,170,0.3); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* OFFLINE BANNER */
+  .offline-banner {
+    display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
+    color: var(--accent3); padding: 10px 20px; border-radius: 30px;
+    font-size: 0.8rem; font-family: var(--mono); z-index: 100;
+    animation: fadeUp 0.3s ease;
+  }
+  .offline-banner.show { display: flex; align-items: center; gap: 8px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .text-display { font-size: 1.05rem; }
+    .lesson-grid { grid-template-columns: 1fr 1fr; }
+    .stats-bar { gap: 8px; }
+    .stat-val { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div id="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⌨️</div>
+      <h1>Type<span>Master</span></h1>
+    </div>
+    <div class="badge">20 / 100 LESSONS</div>
+  </header>
+
+  <!-- LESSON SELECT -->
+  <div id="lesson-screen">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>YOUR PROGRESS</span>
+        <span id="progress-text">0 of 20 complete</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="screen-title">Choose a Lesson</div>
+    <div class="screen-sub">Complete lessons in order to unlock the next one. Each lesson builds on the last.</div>
+    <div class="lesson-grid" id="lesson-grid"></div>
+  </div>
+
+  <!-- PRACTICE -->
+  <div id="practice-screen">
+    <div class="practice-header">
+      <button class="back-btn" onclick="goHome()">← Back</button>
+      <div class="practice-info">
+        <h2 id="prac-title">Lesson 1</h2>
+        <p id="prac-sub">Home Row Keys</p>
+      </div>
+    </div>
+
+    <div class="lesson-instructions" id="lesson-instructions"></div>
+
+    <div class="stats-bar">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-wpm">0</div>
+        <div class="stat-label">WPM</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-acc">100%</div>
+        <div class="stat-label">ACCURACY</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-time">0s</div>
+        <div class="stat-label">TIME</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-errors">0</div>
+        <div class="stat-label">ERRORS</div>
+      </div>
+    </div>
+
+    <div class="typing-card" onclick="focusInput()">
+      <div class="text-display" id="text-display"></div>
+      <div class="input-prompt" id="input-prompt">
+        <div class="pulse"></div>
+        <span>Click here and start typing…</span>
+      </div>
+    </div>
+    <div class="keyboard-hint" id="keyboard-hint"></div>
+    <input type="text" class="hidden-input" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-screen">
+    <div class="result-card">
+      <div class="result-emoji" id="result-emoji">🎉</div>
+      <div class="result-title" id="result-title">Excellent!</div>
+      <div class="result-sub" id="result-sub">You've completed Lesson 1</div>
+      <div class="stars-display" id="result-stars">⭐⭐⭐</div>
+      <div class="result-stats">
+        <div class="result-stat"><div class="val" id="res-wpm">0</div><div class="lbl">WPM</div></div>
+        <div class="result-stat"><div class="val" id="res-acc">0%</div><div class="lbl">ACCURACY</div></div>
+        <div class="result-stat"><div class="val" id="res-time">0s</div><div class="lbl">TIME</div></div>
+        <div class="result-stat"><div class="val" id="res-errors">0</div><div class="lbl">ERRORS</div></div>
+      </div>
+      <div>
+        <button class="btn btn-primary" id="next-btn" onclick="nextLesson()">Next Lesson →</button>
+        <button class="btn btn-secondary" onclick="retryLesson()">Retry</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="offline-banner" id="offline-banner">📶 You're offline — lessons still work!</div>
+
+<script>
+// ─── LESSONS DATA ──────────────────────────────────────────────────────────────
+const LESSONS = [
+  {
+    id: 1, title: "Home Row Left", category: "Basics",
+    keys: ["a","s","d","f"],
+    instructions: "<strong>Home Row</strong> is where your left hand rests. Place your fingers on <strong>A S D F</strong>. Your left pinky on A, ring on S, middle on D, index on F.",
+    texts: ["asdf fdsa asdf fdsa", "asd fda sdf ads", "ff dd ss aa fd sa", "fads dads adds fads"]
+  },
+  {
+    id: 2, title: "Home Row Right", category: "Basics",
+    keys: ["j","k","l",";"],
+    instructions: "<strong>Right hand home row:</strong> Index finger on <strong>J</strong>, middle on <strong>K</strong>, ring on <strong>L</strong>, pinky on <strong>;</strong>. Keep wrists relaxed!",
+    texts: ["jkl; ;lkj jkl; ;lkj", "jk lj kl ;l jl", "jj kk ll ;; jk l;", "jell skill lull"]
+  },
+  {
+    id: 3, title: "Full Home Row", category: "Basics",
+    keys: ["a","s","d","f","j","k","l",";"],
+    instructions: "Now combine <strong>both hands</strong> on the home row: A S D F (left) and J K L ; (right). This is your foundation!",
+    texts: ["asdf jkl; fdsa ;lkj", "ask add fall glad", "flask dads jell falls", "asks slad flask jads"]
+  },
+  {
+    id: 4, title: "Letters E and I", category: "Upper Row",
+    keys: ["e","i"],
+    instructions: "<strong>E</strong> is typed by your left middle finger (from D). <strong>I</strong> is typed by your right middle finger (from K). Reach up and return!",
+    texts: ["deed feed idea file", "side like aide file", "seek feed idle life", "field chief pixel kite"]
+  },
+  {
+    id: 5, title: "Letters R and U", category: "Upper Row",
+    keys: ["r","u"],
+    instructions: "<strong>R</strong> — left index finger reaches up from F. <strong>U</strong> — right index finger reaches up from J. Practice the reach!",
+    texts: ["fur ruse rule sure", "rude dusk true lure", "rural surge furrow", "future lure ruffle"]
+  },
+  {
+    id: 6, title: "Letters T and Y", category: "Upper Row",
+    keys: ["t","y"],
+    instructions: "<strong>T</strong> is reached by left index from F. <strong>Y</strong> is reached by right index from J. These are the middle-top keys.",
+    texts: ["yet try they style", "dusty tasty sixty rusty", "study stuff thirty", "treaty thirty style"]
+  },
+  {
+    id: 7, title: "Full Top Row", category: "Upper Row",
+    keys: ["q","w","e","r","t","y","u","i","o","p"],
+    instructions: "Time to explore the <strong>full top row</strong>! Q W E R T on the left and Y U I O P on the right. Take it slow.",
+    texts: ["quiet power wrote type", "pretty upper route", "write your quote story", "power query equip"]
+  },
+  {
+    id: 8, title: "Letters V and M", category: "Lower Row",
+    keys: ["v","m"],
+    instructions: "<strong>V</strong> — left index finger reaches down from F. <strong>M</strong> — right index finger reaches down from J.",
+    texts: ["vim move valve mauve", "vivid movie marvel", "valve maven venom", "move valve vivid"]
+  },
+  {
+    id: 9, title: "Letters B and N", category: "Lower Row",
+    keys: ["b","n"],
+    instructions: "<strong>B</strong> — left index reaches down-right. <strong>N</strong> — right index reaches down-left. Both near the center!",
+    texts: ["burn noble blend snob", "brain brine noble bend", "born blend snob brain", "ribbon number blend"]
+  },
+  {
+    id: 10, title: "Full Bottom Row", category: "Lower Row",
+    keys: ["z","x","c","v","b","n","m"],
+    instructions: "The <strong>bottom row</strong> — Z X C V (left) and B N M (right). These keys need precise finger movement. Go slowly!",
+    texts: ["zinc exam cover verb", "maxim complex venom", "zinc numb exam vex", "combine vex zombie"]
+  },
+  {
+    id: 11, title: "Capital Letters", category: "Shift Key",
+    keys: ["Shift"],
+    instructions: "Use <strong>Shift</strong> to capitalize. Left Shift for right-hand letters, Right Shift for left-hand. Hold Shift, press the key, release both.",
+    texts: ["Hello World", "My Name Is", "I Love To Type", "Good Morning Friend"]
+  },
+  {
+    id: 12, title: "Common Words", category: "Words",
+    keys: [],
+    instructions: "Practice the most <strong>common English words</strong>. These appear constantly in real typing. Build muscle memory for them!",
+    texts: ["the and that have", "for with this from", "they will have what", "about there their one"]
+  },
+  {
+    id: 13, title: "3-Letter Words", category: "Words",
+    keys: [],
+    instructions: "Short words build speed. Practice these <strong>3-letter words</strong> smoothly — aim for rhythm, not just accuracy.",
+    texts: ["the and for are but", "not you all can had", "her was one our out", "did get has him his"]
+  },
+  {
+    id: 14, title: "4-Letter Words", category: "Words",
+    keys: [],
+    instructions: "Move up to <strong>4-letter words</strong>. These are very common in English. Focus on typing each word as one smooth movement.",
+    texts: ["that with have this", "will your from they", "know want been good", "much some time very"]
+  },
+  {
+    id: 15, title: "Numbers Row", category: "Numbers",
+    keys: ["1","2","3","4","5","6","7","8","9","0"],
+    instructions: "The <strong>number row</strong> sits above the top letter row. Each finger reaches up. Keep your home row fingers as anchors.",
+    texts: ["1234 5678 90 123", "4567 8901 2345 67", "1357 2468 1020 30", "12 34 56 78 90 10"]
+  },
+  {
+    id: 16, title: "Punctuation Basics", category: "Symbols",
+    keys: [".","," ,";"],
+    instructions: "Punctuation makes typing real! Practice <strong>period, comma, and semicolon</strong>. These are right-hand pinky keys.",
+    texts: ["yes, no, maybe, fine.", "run, jump, fly, swim.", "Hello, world. How are you?", "Fast, slow, stop. Go."]
+  },
+  {
+    id: 17, title: "Simple Sentences", category: "Sentences",
+    keys: [],
+    instructions: "Now type complete <strong>simple sentences</strong>. Focus on smooth flow. Don't stop between words — keep the rhythm going!",
+    texts: ["I can type fast.", "She likes to read.", "The cat sat here.", "We are doing well."]
+  },
+  {
+    id: 18, title: "Speed Challenge", category: "Speed",
+    keys: [],
+    instructions: "This is a <strong>speed challenge</strong>! Type as fast as you can while keeping accuracy above 90%. Push your limits!",
+    texts: ["the quick brown fox jumps", "over the lazy sleeping dog", "pack my box with five dozen", "how vexingly quick daft"]
+  },
+  {
+    id: 19, title: "Full Sentences", category: "Sentences",
+    keys: [],
+    instructions: "Type these <strong>full natural sentences</strong>. These use all parts of the keyboard. Focus on consistent speed throughout.",
+    texts: ["Learning to type is a great skill.", "Practice every day to improve fast.", "Keep your eyes on the screen above.", "Good typists look at words not keys."]
+  },
+  {
+    id: 20, title: "Mixed Challenge", category: "Master",
+    keys: [],
+    instructions: "The <strong>ultimate beginner challenge!</strong> This combines everything you've learned. Type carefully and celebrate finishing all 20 lessons!",
+    texts: [
+      "Great work comes from daily practice.",
+      "You have learned all the basic keys.",
+      "Keep typing every single day to grow.",
+      "You are now a TypeMaster beginner!"
+    ]
+  }
+];
+
+// ─── STATE ─────────────────────────────────────────────────────────────────────
+let progress = JSON.parse(localStorage.getItem('tm_progress') || '{}');
+let currentLesson = null;
+let currentTextIndex = 0;
+let currentPos = 0;
+let errors = 0;
+let totalErrors = 0;
+let startTime = null;
+let timerInterval = null;
+let finished = false;
+
+// ─── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  renderLessons();
+  document.getElementById('hidden-input').addEventListener('input', handleInput);
+  document.getElementById('hidden-input').addEventListener('keydown', handleKeydown);
+  window.addEventListener('offline', () => {
+    document.getElementById('offline-banner').classList.add('show');
+    setTimeout(() => document.getElementById('offline-banner').classList.remove('show'), 3000);
+  });
+}
+
+function renderLessons() {
+  const grid = document.getElementById('lesson-grid');
+  const completed = Object.keys(progress).filter(k => progress[k]).length;
+  document.getElementById('progress-text').textContent = `${completed} of 20 complete`;
+  document.getElementById('progress-fill').style.width = `${(completed/20)*100}%`;
+
+  grid.innerHTML = LESSONS.map((l, i) => {
+    const done = progress[l.id];
+    const locked = i > 0 && !progress[LESSONS[i-1].id];
+    const stars = done ? (done.stars || 1) : 0;
+    return `
+    <div class="lesson-card ${done ? 'completed' : ''} ${locked ? 'locked' : ''}"
+         onclick="${locked ? '' : `startLesson(${l.id})`}">
+      <div class="lesson-num">LESSON ${String(l.id).padStart(2,'0')} · ${l.category.toUpperCase()}</div>
+      <div class="lesson-title">${l.title}</div>
+      ${done ? `<div class="lesson-status done">✓</div>` : locked ? `<div class="lesson-status lock">🔒</div>` : ''}
+      <div class="lesson-stars">
+        ${[1,2,3].map(s => `<span class="star ${s<=stars ? 'lit' : ''}">★</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── LESSON START ──────────────────────────────────────────────────────────────
+function startLesson(id) {
+  currentLesson = LESSONS.find(l => l.id === id);
+  currentTextIndex = 0;
+  resetRound();
+
+  document.getElementById('lesson-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('practice-screen').style.display = 'block';
+
+  document.getElementById('prac-title').textContent = `Lesson ${currentLesson.id}: ${currentLesson.title}`;
+  document.getElementById('prac-sub').textContent = `${currentLesson.category} · ${currentLesson.texts.length} exercises`;
+  document.getElementById('lesson-instructions').innerHTML = currentLesson.instructions;
+
+  renderKeyboardHint();
+  renderText();
+}
+
+function resetRound(keepTotals = false) {
+  currentPos = 0; errors = 0;
+  if (!keepTotals) {
+    totalErrors = 0; startTime = null;
+    document.getElementById('stat-wpm').textContent = '0';
+    document.getElementById('stat-acc').textContent = '100%';
+    document.getElementById('stat-time').textContent = '0s';
+    document.getElementById('stat-errors').textContent = '0';
+  }
+  finished = false;
+  clearInterval(timerInterval);
+  document.getElementById('hidden-input').value = '';
+}
+
+function renderText() {
+  const text = currentLesson.texts[currentTextIndex];
+  const display = document.getElementById('text-display');
+  display.innerHTML = text.split('').map((ch, i) =>
+    `<span class="char ${i===0?'current':'pending'}" data-i="${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`
+  ).join('');
+}
+
+function renderKeyboardHint() {
+  const hint = document.getElementById('keyboard-hint');
+  if (!currentLesson.keys.length) { hint.innerHTML = ''; return; }
+  const row = 'qwertyuiopasdfghjkl;zxcvbnm'.split('').concat(['Shift','Space']);
+  const display = ['q','w','e','r','t','y','u','i','o','p','a','s','d','f','g','h','j','k','l',';','z','x','c','v','b','n','m','Shift','_'];
+  hint.innerHTML = display.map((k, i) => {
+    const actual = row[i] || k;
+    const isHl = currentLesson.keys.map(x=>x.toLowerCase()).includes(actual.toLowerCase());
+    return `<div class="key ${isHl?'highlight':''}">${k === '_' ? '⎵' : k}</div>`;
+  }).join('');
+}
+
+// ─── INPUT HANDLING ────────────────────────────────────────────────────────────
+function focusInput() {
+  document.getElementById('hidden-input').focus();
+  document.getElementById('input-prompt').classList.add('active');
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    if (currentPos > 0) {
+      currentPos--;
+      updateDisplay();
+    }
+  }
+}
+
+function handleInput(e) {
+  const input = e.target;
+  const val = input.value;
+  if (!val.length) return;
+  const ch = val[val.length - 1];
+  input.value = '';
+
+  if (finished) return;
+  if (!startTime) startTimer();
+
+  const text = currentLesson.texts[currentTextIndex];
+  if (currentPos >= text.length) return;
+
+  if (ch === text[currentPos]) {
+    currentPos++;
+  } else {
+    errors++;
+    totalErrors++;
+    document.getElementById('stat-errors').textContent = totalErrors;
+    const chars = document.querySelectorAll('.char');
+    if (chars[currentPos]) {
+      chars[currentPos].classList.add('wrong');
+      setTimeout(() => chars[currentPos].classList.remove('wrong'), 300);
+    }
+    // flash wrong
+    const el = document.getElementById('text-display');
+    el.style.background = 'rgba(248,113,113,0.04)';
+    setTimeout(() => el.style.background = '', 150);
+  }
+
+  updateDisplay();
+
+  if (currentPos >= text.length) {
+    onTextComplete();
+  }
+}
+
+function updateDisplay() {
+  const text = currentLesson.texts[currentTextIndex];
+  const chars = document.querySelectorAll('.char');
+  chars.forEach((el, i) => {
+    el.className = 'char';
+    if (i < currentPos) el.classList.add('correct');
+    else if (i === currentPos) el.classList.add('current');
+    else el.classList.add('pending');
+  });
+  updateAcc(text);
+}
+
+function updateAcc(text) {
+  const total = currentPos;
+  const acc = total === 0 ? 100 : Math.round(((total - errors) / total) * 100);
+  const el = document.getElementById('stat-acc');
+  el.textContent = acc + '%';
+  el.className = 'stat-val' + (acc < 80 ? ' danger' : '');
+}
+
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const sec = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('stat-time').textContent = sec + 's';
+    const text = currentLesson.texts[currentTextIndex];
+    const words = currentPos / 5;
+    const min = (Date.now() - startTime) / 60000;
+    const wpm = min > 0 ? Math.round(words / min) : 0;
+    document.getElementById('stat-wpm').textContent = wpm;
+  }, 300);
+}
+
+function onTextComplete() {
+  clearInterval(timerInterval);
+  finished = true;
+
+  currentTextIndex++;
+  if (currentTextIndex < currentLesson.texts.length) {
+    // more exercises — keep running totals
+    setTimeout(() => {
+      resetRound(true);
+      renderText();
+      focusInput();
+    }, 600);
+  } else {
+    showResult();
+  }
+}
+
+// ─── RESULT ────────────────────────────────────────────────────────────────────
+function showResult() {
+  const sec = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+  const text = currentLesson.texts.join(' ');
+  const words = text.split(' ').length * currentLesson.texts.length;
+  const wpmFinal = parseInt(document.getElementById('stat-wpm').textContent) || 0;
+  const accFinal = parseInt(document.getElementById('stat-acc').textContent) || 100;
+
+  const stars = accFinal >= 95 ? 3 : accFinal >= 80 ? 2 : 1;
+  const prev = progress[currentLesson.id];
+  if (!prev || (prev.stars || 0) < stars) {
+    progress[currentLesson.id] = { stars, wpm: wpmFinal, acc: accFinal };
+    localStorage.setItem('tm_progress', JSON.stringify(progress));
+  }
+
+  const msgs = [
+    ['🎉', 'Excellent!', 'Perfect performance!'],
+    ['👍', 'Well Done!', 'Good accuracy achieved!'],
+    ['💪', 'Keep Going!', 'Practice makes perfect!']
+  ];
+  const [emoji, title, sub] = msgs[3 - stars] || msgs[2];
+
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-sub').textContent = `You completed Lesson ${currentLesson.id}: ${currentLesson.title}`;
+  document.getElementById('result-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3-stars);
+  document.getElementById('res-wpm').textContent = wpmFinal;
+  document.getElementById('res-acc').textContent = accFinal + '%';
+  document.getElementById('res-time').textContent = sec + 's';
+  document.getElementById('res-errors').textContent = totalErrors;
+
+  const nextId = currentLesson.id + 1;
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.style.display = nextId <= 20 ? 'inline-block' : 'none';
+
+  document.getElementById('practice-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+}
+
+function nextLesson() {
+  const nextId = currentLesson.id + 1;
+  if (nextId <= 20) startLesson(nextId);
+}
+function retryLesson() {
+  currentTextIndex = 0;
+  totalErrors = 0;
+  document.getElementById('result-screen').style.display = 'none';
+  startLesson(currentLesson.id);
+}
+function goHome() {
+  clearInterval(timerInterval);
+  document.getElementById('practice-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('lesson-screen').style.display = 'block';
+  renderLessons();
+}
+
+init();
+
+// ─── SERVICE WORKER REGISTRATION ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('TypeMaster: offline ready ✓'))
+      .catch(e => console.warn('SW registration failed:', e));
+  });
+}
+</script>
+</body>
+</html>
